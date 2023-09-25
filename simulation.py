@@ -34,16 +34,16 @@ def main():
 
     # The simulation without heroes, so if all citizens were normal guys in a city with some zombies.
     # This is to adjust the humans' influence on the pandemic.
-    simulate(15,
+    simulate(30,
              human_tasks,
-             (HMN_CITIZENS + HERO_CITIZENS, 0, 0, 10),
+             (HMN_CITIZENS + HERO_CITIZENS, 0, 0, 1),
              "zombified_no_heroes.png")
 
     # The simulation without humans, so if all citizens were heroes in a city with some zombies.
     # This is to adjust the heroes' influence on the pandemic.
-    simulate(15,
+    simulate(300,
              hero_tasks,
-             (0, HMN_CITIZENS + HERO_CITIZENS, 0, 10),
+             (0, HMN_CITIZENS + HERO_CITIZENS, 0, 1),
              "zombified_all_heroes.png")
 
 
