@@ -19,30 +19,56 @@ DAY = 0
 
 
 def main():
+    static_tasks = [population_growth]
+    human_tasks = [human_kills_zombie, zombie_transforms_human, human_kills_human]
+    hero_tasks = [hero_kills_zombie, zombie_transforms_hero, hero_kills_hero]
     random.seed(1)
     duration = 3650
     duration = 30
-    simulate_normal(duration)
-    simulate_with_zombies_no_heroes(15)
+
+    # The simulation without zombies -> blank
+    simulate(duration,
+             static_tasks,
+             (HMN_CITIZENS, HERO_CITIZENS, 0, 0),
+             "normal.png")
+
+    # The simulation without heroes, so if all citizens were normal guys in a city with some zombies.
+    # This is to adjust the humans' influence on the pandemic.
+    simulate(15,
+             human_tasks,
+             (HMN_CITIZENS + HERO_CITIZENS, 0, 0, 10),
+             "zombified_no_heroes.png")
+
+    # The simulation without humans, so if all citizens were heroes in a city with some zombies.
+    # This is to adjust the heroes' influence on the pandemic.
+    simulate(15,
+             hero_tasks,
+             (0, HMN_CITIZENS + HERO_CITIZENS, 0, 10),
+             "zombified_all_heroes.png")
 
 
-def simulate_normal(iterations: int):
-    """
-        The simulation without zombies -> blank
-    """
-    SPECIES["HUMANS"] = HMN_CITIZENS
-    SPECIES["HEROES"] = HERO_CITIZENS
-    SPECIES["DEADS"] = 0
-    SPECIES["ZOMBIES"] = 0
+def simulate(iterations: int, tasks: list, species_conf: tuple, plot_file: str):
+    global DAY
+    SPECIES["HUMANS"] = species_conf[0]
+    SPECIES["HEROES"] = species_conf[1]
+    SPECIES["DEADS"] = species_conf[2]
+    SPECIES["ZOMBIES"] = species_conf[3]
 
     change = {"HUMANS": [], "HEROES": [], "DEADS": [], "ZOMBIES": []}
     for day in range(iterations):
         population_growth()
+        DAY = day
+        random.shuffle(tasks)
+        for task in tasks:
+            task()
+
         for i in change:
             change[i].append(SPECIES[i])
-    plot(change, "normal.png")
+
+    plot(change, plot_file)
 
 
+# ######################## static tasks ######################## #
 def population_growth():
     """
         The daily growth of the population, independent to zombies
@@ -58,31 +84,7 @@ def population_growth():
     increase_species("HEROES", growth / 2 * bool(SPECIES["HEROES"]))
 
 
-def simulate_with_zombies_no_heroes(iterations: int):
-    """
-        The simulation without heroes, so if all citizens were normal guys in a city with some zombies.
-    """
-    global DAY
-    SPECIES["HUMANS"] = HMN_CITIZENS + HERO_CITIZENS
-    SPECIES["HEROES"] = 0
-    SPECIES["DEADS"] = 0
-    SPECIES["ZOMBIES"] = 10
-
-    change = {"HUMANS": [], "HEROES": [], "DEADS": [], "ZOMBIES": []}
-    tasks = [human_kills_zombie, zombie_transforms_human, human_kills_human]
-    for day in range(iterations):
-        population_growth()
-        DAY = day
-        random.shuffle(tasks)
-        for task in tasks:
-            task()
-
-        for i in change:
-            change[i].append(SPECIES[i])
-
-    plot(change, "zombified_no_heroes.png")
-
-
+# ######################## human tasks ######################## #
 def human_kills_zombie():
     """
         The change of zombies killed by humans.
@@ -125,6 +127,19 @@ def human_kills_human():
     global DAY
     stress = sigmoid(DAY, 100)  # after 100 days 1 human dies a day
     reduce_species("HUMANS", stress) 
+
+
+# ######################## hero tasks ######################## #
+def hero_kills_zombie():
+    pass
+
+
+def zombie_transforms_hero():
+    pass
+
+
+def hero_kills_hero():
+    pass
 
 
 def sigmoid(x: float, where_to_be_one: float) -> float:
