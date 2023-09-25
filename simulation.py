@@ -2,8 +2,10 @@ from sys import argv as args
 from matplotlib import pyplot as plt
 import random
 
-HMN_CITIZENS = 9000
-HERO_CITIZENS = 1000
+# https://www.deutschland123.de/z%C3%BClpich -> 20597k citizens
+CITIZENS = 20597
+HMN_CITIZENS = int(.9 * CITIZENS)
+HERO_CITIZENS = CITIZENS - HMN_CITIZENS
 
 SPECIES = {
     "HUMANS": 0,  # common humans without any skills
@@ -73,15 +75,19 @@ def population_growth():
     """
         The daily growth of the population, independent to zombies
 
-        let's take city Bramsche with 10k citizens
-        https://www.deutschland123.de/bramsche-geburten -> 260 / a
-        https://www.deutschland123.de/bramsche-todesfaelle -> 301 / a -> 3.01% / a
-        https://www.deutschland123.de/bramsche-umz%C3%BCge-zu-und-fortz%C3%BCge -> (1779 - 1815) / a
+        let's take city Zuelpich with around 20k citizens
     """
-    growth = (260 + 1779 - 1815) / 365
-    increase_species("DEADS",  .0301 * (SPECIES["HUMANS"] + SPECIES["HEROES"]) / 365)
+    yearly_births = 191
+    yearly_deaths = 287
+    yearly_in = 1245
+    yearly_out = 991
+    growth = (yearly_in - yearly_out) / 365
+    dying_species("HUMANS",  (yearly_deaths / CITIZENS) * SPECIES["HUMANS"] / 365)
+    dying_species("HEROES",  (yearly_deaths / CITIZENS) * SPECIES["HEROES"] / 365)
     increase_species("HUMANS", growth / 2 * bool(SPECIES["HUMANS"]))
     increase_species("HEROES", growth / 2 * bool(SPECIES["HEROES"]))
+    increase_species("HUMANS",  (yearly_births / CITIZENS) * SPECIES["HUMANS"] / 365)
+    increase_species("HEROES",  (yearly_births / CITIZENS) * SPECIES["HEROES"] / 365)
 
 
 # ######################## human tasks ######################## #
@@ -99,9 +105,10 @@ def human_kills_zombie():
     current_population = SPECIES["HUMANS"] + SPECIES["HEROES"]
     hesitation_factor = sigmoid(SPECIES["ZOMBIES"], current_population / 10)
     if int(SPECIES["ZOMBIES"]) < 10 * int(current_population):
-        reduce_species("ZOMBIES", hesitation_factor * (SPECIES["ZOMBIES"] // 10))
+        killed_zombies = hesitation_factor * (SPECIES["ZOMBIES"] // 10)
     else:
-        reduce_species("ZOMBIES", hesitation_factor * (SPECIES["HUMANS"]))
+        killed_zombies = hesitation_factor * (SPECIES["HUMANS"])
+    dying_species("ZOMBIES", killed_zombies)
 
 
 def zombie_transforms_human():
@@ -111,10 +118,10 @@ def zombie_transforms_human():
         A zombie selects one human a day as meal.
         Ten percent of the victims are gonna be eaten completely, the other part morphs.
     """
-    victims = int(SPECIES["ZOMBIES"]) * bool(SPECIES["HUMANS"])
-    reduce_species("HUMANS", victims if victims < SPECIES["HUMANS"] else SPECIES["HUMANS"])
+    victims = int(SPECIES["ZOMBIES"]) if SPECIES["ZOMBIES"] < SPECIES["HUMANS"] else SPECIES["HUMANS"]
+    dying_species("HUMANS", victims * .1)
 
-    increase_species("DEADS",   victims * .1)
+    reduce_species("HUMANS", victims * .9)
     increase_species("ZOMBIES", victims * .9)
 
 
@@ -126,7 +133,7 @@ def human_kills_human():
     """
     global DAY
     stress = sigmoid(DAY, 100)  # after 100 days 1 human dies a day
-    reduce_species("HUMANS", stress) 
+    dying_species("HUMANS", stress) 
 
 
 # ######################## hero tasks ######################## #
@@ -159,6 +166,11 @@ def reduce_species(species: str, change: float):
 
 def increase_species(species: str, change: float):
     reduce_species(species, -change)
+
+
+def dying_species(species: str, change: float):
+    reduce_species(species, change)
+    increase_species("DEADS", change)
 
 
 def plot(species: dict, file: str):
