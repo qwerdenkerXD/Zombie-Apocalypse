@@ -1,10 +1,11 @@
 from sys import argv as args
 from matplotlib import pyplot as plt
 import random
+from math import ceil
 
 # https://www.deutschland123.de/z%C3%BClpich -> 20597k citizens
 CITIZENS = 20597
-HMN_CITIZENS = int(.9 * CITIZENS)
+HMN_CITIZENS = int(.955 * CITIZENS)
 HERO_CITIZENS = CITIZENS - HMN_CITIZENS
 
 SPECIES = {
@@ -26,10 +27,14 @@ SPECIES_LEGEND = {
 
 DAY = 0
 
+HEROES_ALLOWED = False
+
 
 def main():
+    global HEROES_ALLOWED
     static_tasks = [population_growth]
     human_tasks = [zombie_fights, human_kills_human]
+    hero_tasks = []
     random.seed(1)
 
     # The simulation without zombies -> blank
@@ -45,12 +50,19 @@ def main():
              (HMN_CITIZENS + HERO_CITIZENS, 0, 0, 1),
              "zombified_no_heroes.png")
 
+    HEROES_ALLOWED = True
+
     # The simulation without humans, so if all citizens were heroes in a city with some zombies.
     # This is to adjust the heroes' influence on the pandemic.
-    # simulate(30,
-    #          hero_tasks,
-    #          (0, HMN_CITIZENS + HERO_CITIZENS, 0, 5000),
-    #          "zombified_all_heroes.png")
+    simulate(30,
+             human_tasks,
+             (0, HMN_CITIZENS + HERO_CITIZENS, 0, 2000),
+             "zombified_all_heroes.png")
+
+    simulate(60,
+             static_tasks + human_tasks,
+             (HMN_CITIZENS, HERO_CITIZENS, 0, 2),
+             "zombified.png")
 
 
 def simulate(iterations: int, tasks: list, species_conf: tuple, plot_file: str):
@@ -94,7 +106,6 @@ def population_growth():
     increase_species("HEROES",  (yearly_births / CITIZENS) * SPECIES["HEROES"] / 365)
 
 
-# ######################## human tasks ######################## #
 def zombie_fights():
     """
         The daily fights between the living ones and the zombies
@@ -104,42 +115,33 @@ def zombie_fights():
     fights = random.choices(range(population), k=possible_matches)
     human_fights = len(list(filter(lambda x: x < SPECIES["HUMANS"], fights)))
     hero_fights = len(fights) - human_fights
-    human_fights_zombie(human_fights)
-    hero_fights_zombie(hero_fights)
+    someone_fights_zombie("HUMANS", human_fights, .2)
+    someone_fights_zombie("HEROES", hero_fights, hero_skill())
 
 
-def human_fights_zombie(fights: int):
+def someone_fights_zombie(species: str, fights: int, win_prob: float):
     """
-        The change of zombies killed by humans.
-        One human has the skill to kill one of ten zombies.
+        The change of zombies killed during a fight.
 
-        A tenth of the humans who failed the fight  is gonna be eaten completely, the other turn to a zombie.
+        A tenth of the people who failed the fight is gonna be eaten completely, the other turn to a zombie.
     """
     current_population = SPECIES["HUMANS"] + SPECIES["HEROES"]
-    results = random.choices(range(10), k=fights)
-    success = len(list(filter(lambda x: x == 1, results)))
+    results = random.choices([0, 1], weights=[win_prob, 1-win_prob], k=fights)
+    success = len(list(filter(lambda x: x == 0, results)))
     dying_species("ZOMBIES", success)
 
     fail = fights - success
-    dying_species("HUMANS", fail * .1)
+    if species == "HUMANS" and HEROES_ALLOWED:
+        human_evolves(success)  # a human who survived a fight evolves to a hero
+
+        # if a human fails, he may have luck and meets a hero who saves him
+        if random.random() < SPECIES["HEROES"] / current_population:
+            hero_saves_human(ceil(hero_skill() * fail))
+
+    dying_species(species, fail * .1)
 
     # transforming to zombie
-    reduce_species("HUMANS", fail * .9)
-    increase_species("ZOMBIES", fail * .9)
-
-
-def zombie_transforms_human(fights: int):
-    """
-        The change of humans turned into zombies.
-        This gets higher the more zombies exist.
-        A zombie selects one human a day as meal.
-        Ten percent of the victims are gonna be eaten completely, the other part morphs.
-    """
-    victims = int(SPECIES["ZOMBIES"]) if SPECIES["ZOMBIES"] < SPECIES["HUMANS"] else SPECIES["HUMANS"]
-    dying_species("HUMANS", victims * .1)
-
-    reduce_species("HUMANS", victims * .9)
-    increase_species("ZOMBIES", victims * .9)
+    morphing_species(species, fail * .9)
 
 
 def human_kills_human():
@@ -150,11 +152,22 @@ def human_kills_human():
     """
     global DAY
     stress = sigmoid(DAY, 100)  # after 100 days 1 human dies a day
-    dying_species("HUMANS", stress)
+    dying_species("HUMANS", stress * bool(SPECIES["ZOMBIES"]))
 
 
-def hero_fights_zombie(fights: int):
-    pass
+def hero_saves_human(humans: int):
+    interactions = random.choices([0, 1], weights=[.2, .8], k=humans)
+    recruite_to_hero = len(list(filter(lambda x: x == 1, interactions)))
+    human_evolves(recruite_to_hero)
+
+
+def human_evolves(humans: float):
+    reduce_species("HUMANS", humans)
+    increase_species("HEROES", humans)
+
+
+def hero_skill():
+    return .45 + sigmoid(DAY, 30) * .25
 
 
 def sigmoid(x: float, where_to_be_one: float) -> float:
@@ -181,6 +194,13 @@ def dying_species(species: str, change: float):
     reduce_species(species, change)
     after = SPECIES[species]
     increase_species("DEADS", before - after)
+
+
+def morphing_species(species: str, change: float):
+    before = SPECIES[species]
+    reduce_species(species, change)
+    after = SPECIES[species]
+    increase_species("ZOMBIES", before - after)
 
 
 def plot(species: dict, file: str, x_axis="Tag", y_axis="Anzahl Individuen"):
