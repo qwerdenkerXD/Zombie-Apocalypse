@@ -12,9 +12,16 @@ SPECIES = {
 
     "HEROES": 0,  # special humans, zombie killer
 
-    "DEADS": 0,  # just dead matter, no living-like thing
+    "ZOMBIES": 0,  # undead
 
-    "ZOMBIES": 0  # undead
+    "DEADS": 0  # just dead matter, no living-like thing
+}
+
+SPECIES_LEGEND = {
+    "HUMANS": "Menschen",
+    "HEROES": "Helden",
+    "ZOMBIES": "Zombies",
+    "DEADS": "Tote"
 }
 
 DAY = 0
@@ -22,14 +29,11 @@ DAY = 0
 
 def main():
     static_tasks = [population_growth]
-    human_tasks = [human_kills_zombie, zombie_transforms_human, human_kills_human]
-    hero_tasks = [hero_kills_zombie, zombie_transforms_hero, hero_kills_hero]
+    human_tasks = [zombie_fights, human_kills_human]
     random.seed(1)
-    duration = 3650
-    duration = 30
 
     # The simulation without zombies -> blank
-    simulate(duration,
+    simulate(3650,
              static_tasks,
              (HMN_CITIZENS, HERO_CITIZENS, 0, 0),
              "normal.png")
@@ -43,10 +47,10 @@ def main():
 
     # The simulation without humans, so if all citizens were heroes in a city with some zombies.
     # This is to adjust the heroes' influence on the pandemic.
-    simulate(300,
-             hero_tasks,
-             (0, HMN_CITIZENS + HERO_CITIZENS, 0, 1),
-             "zombified_all_heroes.png")
+    # simulate(30,
+    #          hero_tasks,
+    #          (0, HMN_CITIZENS + HERO_CITIZENS, 0, 5000),
+    #          "zombified_all_heroes.png")
 
 
 def simulate(iterations: int, tasks: list, species_conf: tuple, plot_file: str):
@@ -56,7 +60,7 @@ def simulate(iterations: int, tasks: list, species_conf: tuple, plot_file: str):
     SPECIES["DEADS"] = species_conf[2]
     SPECIES["ZOMBIES"] = species_conf[3]
 
-    change = {"HUMANS": [], "HEROES": [], "DEADS": [], "ZOMBIES": []}
+    change = {"HUMANS": [], "HEROES": [], "ZOMBIES": [], "DEADS": []}
     for day in range(iterations):
         population_growth()
         DAY = day
@@ -91,27 +95,40 @@ def population_growth():
 
 
 # ######################## human tasks ######################## #
-def human_kills_zombie():
+def zombie_fights():
+    """
+        The daily fights between the living ones and the zombies
+    """
+    population = int(SPECIES["HUMANS"] + SPECIES["HEROES"])
+    possible_matches = population if population < SPECIES["ZOMBIES"] else int(SPECIES["ZOMBIES"])
+    fights = random.choices(range(population), k=possible_matches)
+    human_fights = len(list(filter(lambda x: x < SPECIES["HUMANS"], fights)))
+    hero_fights = len(fights) - human_fights
+    human_fights_zombie(human_fights)
+    hero_fights_zombie(hero_fights)
+
+
+def human_fights_zombie(fights: int):
     """
         The change of zombies killed by humans.
-        One human has the skill to kill one of ten zombies if he has no choice.
-        So if there were ten zombies and two humans, they would kill one only still because one of them can flee.
-        If there were 20 zombies and two humans, they would kill two of them.
-        And if there are less then ten, no zombie is gonna be killed.
-        In short, the zombies reduce by a tenth if they are less than the tenfold of the humans, else by the number of humans.
+        One human has the skill to kill one of ten zombies.
 
-        In the beginning humans hesitate with killing because of moral issues, but the growing crowd of zombies changes their mind.
+        A tenth of the humans who failed the fight  is gonna be eaten completely, the other turn to a zombie.
     """
     current_population = SPECIES["HUMANS"] + SPECIES["HEROES"]
-    hesitation_factor = sigmoid(SPECIES["ZOMBIES"], current_population / 10)
-    if int(SPECIES["ZOMBIES"]) < 10 * int(current_population):
-        killed_zombies = hesitation_factor * (SPECIES["ZOMBIES"] // 10)
-    else:
-        killed_zombies = hesitation_factor * (SPECIES["HUMANS"])
-    dying_species("ZOMBIES", killed_zombies)
+    results = random.choices(range(10), k=fights)
+    success = len(list(filter(lambda x: x == 1, results)))
+    dying_species("ZOMBIES", success)
+
+    fail = fights - success
+    dying_species("HUMANS", fail * .1)
+
+    # transforming to zombie
+    reduce_species("HUMANS", fail * .9)
+    increase_species("ZOMBIES", fail * .9)
 
 
-def zombie_transforms_human():
+def zombie_transforms_human(fights: int):
     """
         The change of humans turned into zombies.
         This gets higher the more zombies exist.
@@ -129,23 +146,14 @@ def human_kills_human():
     """
         The change of humans killed by humans.
         This gets higher everyday because of the stress that changes the humans' minds, the survival instinct, the fear of dying.
-        In this small city, let's say that on human is gonna be killed by another a day, in maximum.
+        In this small city, let's say that one human is gonna be killed by another a day, in maximum. This includes suicide as well.
     """
     global DAY
     stress = sigmoid(DAY, 100)  # after 100 days 1 human dies a day
-    dying_species("HUMANS", stress) 
+    dying_species("HUMANS", stress)
 
 
-# ######################## hero tasks ######################## #
-def hero_kills_zombie():
-    pass
-
-
-def zombie_transforms_hero():
-    pass
-
-
-def hero_kills_hero():
+def hero_fights_zombie(fights: int):
     pass
 
 
@@ -169,15 +177,19 @@ def increase_species(species: str, change: float):
 
 
 def dying_species(species: str, change: float):
+    before = SPECIES[species]
     reduce_species(species, change)
-    increase_species("DEADS", change)
+    after = SPECIES[species]
+    increase_species("DEADS", before - after)
 
 
-def plot(species: dict, file: str):
+def plot(species: dict, file: str, x_axis="Tag", y_axis="Anzahl Individuen"):
     plt.clf()
     for i in species:
-        plt.plot(species[i], label=i)
+        plt.plot(species[i], label=SPECIES_LEGEND[i])
     plt.legend(loc="upper left")
+    plt.xlabel(x_axis)
+    plt.ylabel(y_axis)
     plt.savefig(file)
     plt.clf()
 
