@@ -210,7 +210,7 @@ def plot(species: dict, file: str, x_axis="Tag", y_axis="Anzahl Individuen"):
     plt.legend(loc="upper left")
     plt.xlabel(x_axis)
     plt.ylabel(y_axis)
-    plt.savefig(file)
+    plt.savefig("Results/%s" % file)
     plt.clf()
 
 
