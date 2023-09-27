@@ -11,7 +11,7 @@ cp Hausarbeit.pdf tmp/Report/$filename.pdf
 md tmp/Methoden
 cp simulation.py tmp/Methoden
 cp -r Zuelpich tmp/Methoden
-cp -r Hausarbeit tmp/Methoden
+# cp -r Hausarbeit tmp/Methoden
 
 # Results
 cp -r Results tmp
