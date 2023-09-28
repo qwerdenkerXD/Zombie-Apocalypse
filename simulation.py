@@ -69,7 +69,7 @@ def main():
     plt.plot([i + j / 100 for i in range(-12, 13) for j in range(100)], [sigmoid_func(i - 6 + j / 100) for i in range(-12, 13) for j in range(100)], label="phasenverschoben")
     plt.plot([i + j / 100 for i in range(-12, 13) for j in range(100)], [sigmoid_func(i + j / 100) for i in range(-12, 13) for j in range(100)], label="normal")
     plt.plot([i + j / 100 for i in range(-12, 13) for j in range(100)], [sigmoid_func(.5*(i + j / 100)) for i in range(-12, 13) for j in range(100)], label="gestreckt")
-    plt.gca().spines['left'].set_position('center')
+    plt.gca().spines['left'].set_position('zero')
     plt.yticks([0, .5, 1])
     plt.xticks(range(-12, 13, 2))
     plt.gca().spines['top'].set_visible(False)
