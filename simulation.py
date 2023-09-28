@@ -1,7 +1,7 @@
 from sys import argv as args
 from matplotlib import pyplot as plt
 import random
-from math import ceil
+from math import ceil, exp
 
 # https://www.deutschland123.de/z%C3%BClpich -> 20597k citizens
 CITIZENS = 20597
@@ -63,6 +63,23 @@ def main():
              static_tasks + human_tasks,
              (HMN_CITIZENS, HERO_CITIZENS, 0, 2),
              "zombified.png")
+
+    # for the thesis now an example of sigmoid function
+    sigmoid_func = lambda x: 1 / (1 + exp(-x))
+    plt.clf()
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(-12, 13), [sigmoid_func(i - 6) for i in range(-12, 13)], label="phasenverschoben")
+    plt.plot(range(-12, 13), [sigmoid_func(i) for i in range(-12, 13)], label="normal")
+    plt.plot(range(-12, 13), [sigmoid_func(.5*i) for i in range(-12, 13)], label="gestreckt")
+    plt.gca().spines['left'].set_position('center')
+    plt.yticks([0, .5, 1])
+    plt.xticks(range(-12, 13, 2))
+    plt.gca().spines['top'].set_visible(False)
+    plt.gca().spines['right'].set_visible(False)
+    plt.legend(loc="upper left")
+    plt.savefig("Results/sigmoid.png")
+    plt.clf()
+
 
 
 def simulate(iterations: int, tasks: list, species_conf: tuple, plot_file: str):
@@ -175,7 +192,6 @@ def sigmoid(x: float, where_to_be_one: float) -> float:
         The sigmoid function, converges to 1.
         The normal function with e^-x, so factor 1 for x is close to 1 at x=6 -> factor=6/(x where it should be close 1)
     """
-    from math import exp
     if where_to_be_one == 0:
         return 1
     return 1 / (1 + exp(-(6 / (where_to_be_one / 2)) * (x - (where_to_be_one / 2))))
