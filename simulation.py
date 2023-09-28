@@ -5,7 +5,7 @@ from math import ceil, exp
 
 # https://www.deutschland123.de/z%C3%BClpich -> 20597k citizens
 CITIZENS = 20597
-HMN_CITIZENS = int(.955 * CITIZENS)
+HMN_CITIZENS = int(.9 * CITIZENS)
 HERO_CITIZENS = CITIZENS - HMN_CITIZENS
 
 SPECIES = {
@@ -32,21 +32,19 @@ HEROES_ALLOWED = False
 
 def main():
     global HEROES_ALLOWED
-    static_tasks = [population_growth]
-    human_tasks = [zombie_fights, human_kills_human]
-    hero_tasks = []
+    tasks = [zombie_fights, human_kills_human]
     random.seed(1)
 
     # The simulation without zombies -> blank
     simulate(3650,
-             static_tasks,
+             [],
              (HMN_CITIZENS, HERO_CITIZENS, 0, 0),
              "normal.png")
 
     # The simulation without heroes, so if all citizens were normal guys in a city with some zombies.
     # This is to adjust the humans' influence on the pandemic.
     simulate(30,
-             human_tasks,
+             tasks,
              (HMN_CITIZENS + HERO_CITIZENS, 0, 0, 1),
              "zombified_no_heroes.png")
 
@@ -55,13 +53,13 @@ def main():
     # The simulation without humans, so if all citizens were heroes in a city with some zombies.
     # This is to adjust the heroes' influence on the pandemic.
     simulate(30,
-             human_tasks,
+             tasks,
              (0, HMN_CITIZENS + HERO_CITIZENS, 0, 2000),
              "zombified_all_heroes.png")
 
     simulate(60,
-             static_tasks + human_tasks,
-             (HMN_CITIZENS, HERO_CITIZENS, 0, 2),
+             tasks,
+             (HMN_CITIZENS, HERO_CITIZENS, 0, 1),
              "zombified.png")
 
     # for the thesis now an example of sigmoid function
@@ -79,7 +77,6 @@ def main():
     plt.legend(loc="upper left")
     plt.savefig("Results/sigmoid.png")
     plt.clf()
-
 
 
 def simulate(iterations: int, tasks: list, species_conf: tuple, plot_file: str):
@@ -154,6 +151,7 @@ def someone_fights_zombie(species: str, fights: int, win_prob: float):
         # if a human fails, he may have luck and meets a hero who saves him
         if random.random() < SPECIES["HEROES"] / current_population:
             hero_saves_human(ceil(hero_skill() * fail))
+            fail -= ceil(hero_skill() * fail)
 
     dying_species(species, fail * .1)
 
